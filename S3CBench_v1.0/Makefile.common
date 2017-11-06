@@ -1,0 +1,85 @@
+################################################################
+## This file is included by each Makefile in the subdirectories
+## Author: Bin Lin
+## Affiliation: SVL Lab, Portland State University
+## Date: 10/27/2017
+
+########## Note: set SYSTEMC_HOME environment variable #########
+################################################################
+
+ifneq (, $(wildcard /bin/uname))
+CPU_ARCH = $(shell /bin/uname -m)
+endif
+
+ifeq ($(CPU_ARCH),x86_64)
+ARCH_FLAG =
+else
+ARCH_FLAG = -m32
+endif
+
+ifdef CYBER_SYSTEMC_TARGET_ARCH
+CWB_SC_ARCH = $(CYBER_SYSTEMC_TARGET_ARCH)
+else
+ifeq (, $(findstring Windows,$(OS)))
+ifeq ($(CPU_ARCH),x86_64)
+CWB_SC_ARCH = linux64
+else
+CWB_SC_ARCH = linux
+endif
+else
+CWB_SC_ARCH = mingw
+endif
+endif
+
+INC_DIRS = -I. -I$(SYSTEMC_HOME)/include
+LIB_DIRS = $(SYSTEMC_HOME)/lib-$(CWB_SC_ARCH)
+
+CC	= g++
+RM	= /bin/rm
+
+LINKER	= $(CC)
+CFLAGS	= $(ARCH_FLAG)
+LDFLAGS	= $(ARCH_FLAG)
+
+LIBS	= -lm -lsystemc -lgcov
+
+HDRS = $(wildcard *.h)
+SRCS = $(wildcard *.cpp)
+OBJS	= $(notdir $(addsuffix .o,$(basename $(SRCS))))
+
+debug: CFLAGS += -g -DDEBUG
+wave: CFLAGS += -DWAVE_DUMP
+swom: CFLAGS += -DSWOM
+swm: CFLAGS += -DSWM
+swom_tri: CFLAGS += -DSWOM_TRI
+swm_tri: CFLAGS += -DSWM_TRI
+
+$(TARGET) : $(OBJS)
+	$(LINKER) -o "$@" -L$(LIB_DIRS) $(LDFLAGS) $(OBJS) $(LIBS)
+
+debug: $(OBJS)
+	$(LINKER) -o $(TARGET) -L$(LIB_DIRS) $(LDFLAGS) $(OBJS) $(LIBS) $(DEBUG)
+
+wave:  $(OBJS)
+	$(LINKER) -o $(TARGET) -L$(LIB_DIRS) $(LDFLAGS) $(OBJS) $(LIBS) $(WAVEFLAG)
+
+swom:  $(OBJS)
+	$(LINKER) -o $(TARGET) -L$(LIB_DIRS) $(LDFLAGS) $(OBJS) $(LIBS) $(SWOMFLAG)
+
+swm:  $(OBJS)
+	$(LINKER) -o $(TARGET) -L$(LIB_DIRS) $(LDFLAGS) $(OBJS) $(LIBS) $(SWMFLAG)
+
+swom_tri:  $(OBJS)
+	$(LINKER) -o $(TARGET) -L$(LIB_DIRS) $(LDFLAGS) $(OBJS) $(LIBS) $(SWOM_TRIFLAG)
+
+swm_tri:  $(OBJS)
+	$(LINKER) -o $(TARGET) -L$(LIB_DIRS) $(LDFLAGS) $(OBJS) $(LIBS) $(SWM_TRIFLAG)
+
+lcov:
+	lcov --directory --no-external -t "test" -o coverage.info -c -d ./
+	genhtml -o html coverage.info
+	firefox ./html/index.html
+
+clean :
+	@$(RM) -rf $(OBJS) $(TARGET) *.gcda *.gcno html coverage.info \
+     diff.txt *_output.txt *.vcd
